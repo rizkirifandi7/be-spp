@@ -3,9 +3,6 @@ const { Unit } = require("../models");
 const getAllData = async (req, res) => {
 	try {
 		const unit = await Unit.findAll();
-		if (unit.length === 0) {
-			return res.status(404).json({ message: "Data tidak ditemukan" });
-		}
 		return res.status(200).json({
 			message: "Data ditemukan",
 			data: unit,

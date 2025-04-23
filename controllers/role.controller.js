@@ -3,9 +3,6 @@ const { Role } = require("../models");
 const getAllData = async (req, res) => {
 	try {
 		const roles = await Role.findAll();
-		if (roles.length === 0) {
-			return res.status(404).json({ message: "Data tidak ditemukan" });
-		}
 		return res.status(200).json({
 			message: "Data ditemukan",
 			data: roles,

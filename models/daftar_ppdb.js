@@ -8,13 +8,15 @@ module.exports = (sequelize, DataTypes) => {
 		 * The `models/index` file will call this method automatically.
 		 */
 		static associate(models) {
-			// define association here
+			daftar_ppdb.belongsTo(models.ppdb_pembayaran, {
+				foreignKey: "id_ppdb",
+				as: "ppdb_pembayaran",
+			});
 		}
 	}
 	daftar_ppdb.init(
 		{
 			id_ppdb: DataTypes.INTEGER,
-			id_unit: DataTypes.INTEGER,
 			no_daftar: DataTypes.STRING,
 			nama: DataTypes.STRING,
 			email: DataTypes.STRING,
@@ -30,7 +32,6 @@ module.exports = (sequelize, DataTypes) => {
 			alamat: DataTypes.STRING,
 			nik: DataTypes.STRING,
 			status_pembayaran: DataTypes.ENUM("paid", "unpaid"),
-			gambar: DataTypes.STRING,
 		},
 		{
 			sequelize,

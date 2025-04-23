@@ -1,25 +1,23 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
-    /**
-     * Add seed commands here.
-     *
-     * Example:
-     * await queryInterface.bulkInsert('People', [{
-     *   name: 'John Doe',
-     *   isBetaMember: false
-     * }], {});
-    */
-  },
-
-  async down (queryInterface, Sequelize) {
-    /**
-     * Add commands to revert seed here.
-     *
-     * Example:
-     * await queryInterface.bulkDelete('People', null, {});
-     */
-  }
+	up: (queryInterface, Sequelize) => {
+		return queryInterface.bulkInsert("Sekolahs", [
+			{
+				nama_sekolah: "SMA Negeri 1 Test",
+				alamat: "Jl. Pendidikan No. 123, Kota Test, Provinsi Test",
+				telepon: "021-7654321",
+				website: "https://sman1test.sch.id",
+				gambar: "sman1test.jpg",
+				pemilik: "Pemerintah Provinsi Test",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		]);
+	},
+	down: (queryInterface, Sequelize) => {
+		return queryInterface.bulkDelete("Sekolahs", null, {});
+	},
 };
+

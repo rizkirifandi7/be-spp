@@ -33,9 +33,6 @@ module.exports = {
 					"verification"
 				),
 			},
-			gambar: {
-				type: Sequelize.STRING,
-			},
 			alamat: {
 				type: Sequelize.TEXT,
 			},

@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/role.controller");
+} = require("../controllers/atur-pembayaran.controller");
 
 router.get("/", getAllData);
 router.get("/:id", getDataById);

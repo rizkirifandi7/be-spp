@@ -10,46 +10,50 @@ const Login = async (req, res) => {
 	try {
 		const { email, password } = req.body;
 
-		if (!email || !password) {
-			return res.status(400).json({ message: "Semua field harus diisi" });
-		}
-
-		const akun = await Akun.findOne({
+		const user = await Akun.findOne({
 			where: { email },
 		});
 
-		if (!akun) {
-			return res.status(404).json({ message: "Email tidak terdaftar" });
+		if (!user) {
+			return res.status(404).json({
+				message: "User tidak ditemukan",
+			});
 		}
 
-		const isMatch = await bcrypt.compare(password, akun.password);
+		const isMatch = bcrypt.compareSync(password, user.password);
 
 		if (!isMatch) {
-			return res.status(401).json({ message: "Password salah" });
+			return res.status(400).json({
+				message: "Password salah",
+			});
 		}
 
-		const token = jwt.sign({ id: akun.id }, process.env.JWT_SECRET, {
-			expiresIn: "1h",
-		});
+		const token = jwt.sign(
+			{ id: user.id, nama: user.nama, role: user.role },
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "6h",
+			}
+		);
 
-		return res.status(200).json({
+		res.status(200).json({
+			status: true,
 			message: "Login berhasil",
-			data: {
-				id: akun.id,
-				nama: akun.nama,
-				email: akun.email,
-				token,
-			},
+			data: { token },
+			role: user.role,
 		});
 	} catch (error) {
-		return res.status(500).json({ message: error.message });
+		res.status(500).json({
+			message: error.message,
+			status: false,
+		});
 	}
 };
 
 const Register = async (req, res) => {
 	try {
 		const {
-			id_role,
+			role,
 			nama,
 			email,
 			password,
@@ -62,7 +66,7 @@ const Register = async (req, res) => {
 		const gambar = req.file ? req.file.filename : null;
 
 		if (
-			!id_role ||
+			!role ||
 			!nama ||
 			!email ||
 			!password ||
@@ -78,7 +82,7 @@ const Register = async (req, res) => {
 
 		const akun = await Akun.create({
 			id_sekolah: 1,
-			id_role,
+			role,
 			nama,
 			email,
 			password: hashedPassword,
@@ -104,7 +108,7 @@ const RegisterSiswa = async (req, res) => {
 	try {
 		// Extract account data
 		const {
-			id_role,
+			role,
 			nama,
 			email,
 			password,
@@ -116,13 +120,22 @@ const RegisterSiswa = async (req, res) => {
 			id_jurusan,
 			id_unit,
 			nisn,
+			nik,
+			tempat_lahir,
+			jenis_kelamin,
+			kebutuhan_khusus,
+			disabilitas,
+			no_kip,
+			nama_ayah,
+			nama_ibu,
+			nama_wali,
 		} = req.body;
 
 		const gambar = req.file ? req.file.filename : null;
 
-		// Validation
+		// Remove umur from required fields since it will be calculated
 		const requiredFields = [
-			"id_role",
+			"role",
 			"nama",
 			"email",
 			"password",
@@ -134,6 +147,15 @@ const RegisterSiswa = async (req, res) => {
 			"id_unit",
 			"nisn",
 			"status",
+			"nik",
+			"tempat_lahir",
+			"jenis_kelamin",
+			"kebutuhan_khusus",
+			"disabilitas",
+			"no_kip",
+			"nama_ayah",
+			"nama_ibu",
+			"nama_wali",
 		];
 
 		const missingFields = requiredFields.filter((field) => !req.body[field]);
@@ -174,6 +196,31 @@ const RegisterSiswa = async (req, res) => {
 			return res.status(400).json({ message: "NISN sudah terdaftar" });
 		}
 
+		// Calculate age based on birth date
+		const birthDate = new Date(tgl_lahir);
+		const today = new Date();
+
+		let yearDiff = today.getFullYear() - birthDate.getFullYear();
+		let monthDiff = today.getMonth() - birthDate.getMonth();
+
+		// Adjust year and month difference if current month is before birth month
+		// or if it's the same month but current day is before birth day
+		if (
+			monthDiff < 0 ||
+			(monthDiff === 0 && today.getDate() < birthDate.getDate())
+		) {
+			yearDiff--;
+			monthDiff += 12;
+		}
+
+		// Adjust month difference if needed
+		if (monthDiff < 0) {
+			monthDiff += 12;
+		}
+
+		// Format the age as "X tahun, Y bulan"
+		const umur = `${yearDiff} tahun, ${monthDiff} bulan`;
+
 		// Hash the password
 		const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -181,11 +228,11 @@ const RegisterSiswa = async (req, res) => {
 		const akun = await Akun.create(
 			{
 				id_sekolah: 1,
-				id_role,
+				role,
 				nama,
 				email,
 				password: hashedPassword,
-				tgl_lahir: new Date(tgl_lahir), // Ensure proper date format
+				tgl_lahir: birthDate, // Ensure proper date format
 				alamat,
 				gambar,
 				status,
@@ -194,7 +241,7 @@ const RegisterSiswa = async (req, res) => {
 			{ transaction }
 		);
 
-		// Create student account
+		// Create student account with calculated age
 		const akun_siswa = await Akun_siswa.create(
 			{
 				id_akun: akun.id,
@@ -202,6 +249,16 @@ const RegisterSiswa = async (req, res) => {
 				id_jurusan,
 				id_unit,
 				nisn,
+				nik,
+				tempat_lahir,
+				umur, // Use the calculated age
+				jenis_kelamin,
+				kebutuhan_khusus,
+				disabilitas,
+				no_kip,
+				nama_ayah,
+				nama_ibu,
+				nama_wali,
 				id_pembayaran: null, // Set default or handle separately
 			},
 			{ transaction }
@@ -217,7 +274,7 @@ const RegisterSiswa = async (req, res) => {
 					id: akun.id,
 					nama: akun.nama,
 					email: akun.email,
-					role: akun.id_role,
+					role: akun.role,
 					status: akun.status,
 				},
 				siswa: {
@@ -225,6 +282,16 @@ const RegisterSiswa = async (req, res) => {
 					kelas: akun_siswa.id_kelas,
 					jurusan: akun_siswa.id_jurusan,
 					unit: akun_siswa.id_unit,
+					nik: akun_siswa.nik,
+					tempat_lahir: akun_siswa.tempat_lahir,
+					umur: akun_siswa.umur,
+					jenis_kelamin: akun_siswa.jenis_kelamin,
+					kebutuhan_khusus: akun_siswa.kebutuhan_khusus,
+					disabilitas: akun_siswa.disabilitas,
+					no_kip: akun_siswa.no_kip,
+					nama_ayah: akun_siswa.nama_ayah,
+					nama_ibu: akun_siswa.nama_ibu,
+					nama_wali: akun_siswa.nama_wali,
 				},
 			},
 		});

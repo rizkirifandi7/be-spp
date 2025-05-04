@@ -10,6 +10,7 @@
     "migrate": "npx sequelize-cli db:migrate",
     "undo:migrate": "npx sequelize-cli db:migrate:undo:all",
     "seed": "npx sequelize-cli db:seed:all",
+    "undo:seed": "npx sequelize-cli db:seed:undo:all",
     "build": "babel src -d public"
   },
   "keywords": [],
@@ -17,6 +18,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cloudinary": "^2.5.1",
@@ -25,6 +27,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
+    "midtrans-client": "^1.4.2",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.7",
     "pg": "^8.13.1",

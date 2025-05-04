@@ -1,7 +1,6 @@
 const router = require("express").Router();
 
 const sekolahRouter = require("./sekolah.routes");
-const roleRouter = require("./role.routes");
 const unitRouter = require("./unit.routes");
 const bulanRouter = require("./bulan.routes");
 const kasRouter = require("./kas.routes");
@@ -13,9 +12,9 @@ const akunRouter = require("./akun.routes");
 const ppdbPembayaranRouter = require("./ppdb-pembayaran.routes");
 const daftarPPDBRouter = require("./daftar-ppdb.routes");
 const authRouter = require("./auth.routes");
+const aturPembayaranRouter = require("./atur-pembayaran.routes");
 
 router.use("/sekolah", sekolahRouter);
-router.use("/role", roleRouter);
 router.use("/unit", unitRouter);
 router.use("/bulan", bulanRouter);
 router.use("/kas", kasRouter);
@@ -27,5 +26,6 @@ router.use("/akun", akunRouter);
 router.use("/ppdb-pembayaran", ppdbPembayaranRouter);
 router.use("/daftar-ppdb", daftarPPDBRouter);
 router.use("/auth", authRouter);
+router.use("/atur-pembayaran", aturPembayaranRouter);
 
 module.exports = router;

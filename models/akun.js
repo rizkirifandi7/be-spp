@@ -8,12 +8,6 @@ module.exports = (sequelize, DataTypes) => {
 		 * The `models/index` file will call this method automatically.
 		 */
 		static associate(models) {
-			// Belongs to Role
-			Akun.belongsTo(models.Role, {
-				foreignKey: "id_role",
-				as: "role",
-			});
-
 			// Has one Akun_siswa
 			Akun.hasOne(models.Akun_siswa, {
 				foreignKey: "id_akun",
@@ -30,7 +24,6 @@ module.exports = (sequelize, DataTypes) => {
 	Akun.init(
 		{
 			id_sekolah: DataTypes.INTEGER,
-			id_role: DataTypes.INTEGER,
 			nama: DataTypes.STRING,
 			email: DataTypes.STRING,
 			password: DataTypes.STRING,
@@ -39,6 +32,7 @@ module.exports = (sequelize, DataTypes) => {
 			alamat: DataTypes.STRING,
 			status: DataTypes.ENUM("on", "off"),
 			gambar: DataTypes.STRING,
+			role: DataTypes.ENUM("admin", "siswa", "guru"),
 		},
 		{
 			sequelize,

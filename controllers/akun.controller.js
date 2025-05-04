@@ -1,19 +1,12 @@
-const { Akun, Role, Akun_siswa, Kelas, Jurusan, Unit } = require("../models");
+const { Akun, Akun_siswa, Kelas, Jurusan, Unit } = require("../models");
 const fs = require("fs");
 const path = require("path");
 const { sequelize } = require("../models");
+const bcrypt = require("bcrypt"); // Add bcrypt import at the top
 
 const getAllData = async (req, res) => {
 	try {
-		const akun = await Akun.findAll({
-			include: [
-				{
-					model: Role,
-					as: "role",
-					attributes: ["id", "role"],
-				},
-			],
-		});
+		const akun = await Akun.findAll();
 		return res.status(200).json({
 			message: "Data ditemukan",
 			data: akun,
@@ -25,26 +18,27 @@ const getAllData = async (req, res) => {
 
 const getAllDataSiswa = async (req, res) => {
 	try {
-		// Find the role ID for "Siswa"
-		const siswaRole = await Role.findOne({ where: { role: "Siswa" } });
-
-		if (!siswaRole) {
-			return res.status(404).json({ message: "Role siswa tidak ditemukan" });
-		}
-
 		// Get all accounts with siswa role and include necessary relations
 		const siswaAccounts = await Akun.findAll({
-			where: { id_role: siswaRole.id },
+			where: { role: "siswa" },
 			include: [
-				{
-					model: Role,
-					as: "role",
-					attributes: ["id", "role"],
-				},
 				{
 					model: Akun_siswa,
 					as: "akun_siswa",
-					attributes: ["id", "nisn"],
+					attributes: [
+						"id",
+						"nisn",
+						"nik",
+						"tempat_lahir",
+						"umur",
+						"jenis_kelamin",
+						"disabilitas",
+						"kebutuhan_khusus",
+						"no_kip",
+						"nama_ayah",
+						"nama_ibu",
+						"nama_wali",
+					],
 					include: [
 						{ model: Kelas, as: "kelas", attributes: ["id", "nama_kelas"] },
 						{
@@ -87,11 +81,61 @@ const getDataById = async (req, res) => {
 	}
 };
 
+const getDataByIdSiswa = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const siswa = await Akun.findOne({
+			where: { id },
+			include: [
+				{
+					model: Akun_siswa,
+					as: "akun_siswa",
+					attributes: [
+						"id",
+						"nisn",
+						"nik",
+						"tempat_lahir",
+						"umur",
+						"jenis_kelamin",
+						"disabilitas",
+						"kebutuhan_khusus",
+						"no_kip",
+						"nama_ayah",
+						"nama_ibu",
+						"nama_wali",
+					],
+					include: [
+						{ model: Kelas, as: "kelas", attributes: ["id", "nama_kelas"] },
+						{
+							model: Jurusan,
+							as: "jurusan",
+							attributes: ["id", "nama_jurusan"],
+						},
+						{ model: Unit, as: "unit", attributes: ["id", "nama_unit"] },
+					],
+				},
+			],
+			attributes: { exclude: ["password"] },
+		});
+
+		if (!siswa) {
+			return res.status(404).json({ message: "Data tidak ditemukan" });
+		}
+
+		return res.status(200).json({
+			message: "Data siswa ditemukan",
+			data: siswa,
+		});
+	} catch (error) {
+		return res.status(500).json({ message: error.message });
+	}
+};
+
 const createData = async (req, res) => {
 	try {
 		const {
 			id_sekolah,
-			id_role,
+			role,
 			id_siswa,
 			nama,
 			email,
@@ -103,13 +147,13 @@ const createData = async (req, res) => {
 
 		const gambar = req.file ? req.file.filename : null;
 
-		if (!id_sekolah || !id_role || !nama || !email || !password || !tgl_lahir) {
+		if (!id_sekolah || !role || !nama || !email || !password || !tgl_lahir) {
 			return res.status(400).json({ message: "Semua field harus diisi" });
 		}
 
 		const akun = await Akun.create({
 			id_sekolah,
-			id_role,
+			role,
 			id_siswa: id_siswa || 0,
 			nama,
 			email,
@@ -146,6 +190,7 @@ const UpdateSiswa = async (req, res) => {
 			id_jurusan,
 			id_unit,
 			nisn,
+			role,
 		} = req.body;
 
 		const gambar = req.file ? req.file.filename : undefined;
@@ -178,10 +223,6 @@ const UpdateSiswa = async (req, res) => {
 						},
 					],
 				},
-				{
-					model: Role,
-					as: "role",
-				},
 			],
 			transaction,
 		});
@@ -199,6 +240,7 @@ const UpdateSiswa = async (req, res) => {
 			alamat: alamat || siswa.alamat,
 			status: status || siswa.status,
 			telepon: telepon || siswa.telepon,
+			role: role || siswa.role,
 		};
 
 		// Jika ada password baru
@@ -301,10 +343,6 @@ const UpdateSiswa = async (req, res) => {
 						},
 					],
 				},
-				{
-					model: Role,
-					as: "role",
-				},
 			],
 			attributes: { exclude: ["password"] },
 		});
@@ -315,7 +353,7 @@ const UpdateSiswa = async (req, res) => {
 			data: {
 				id: updatedSiswa.id,
 				id_sekolah: updatedSiswa.id_sekolah,
-				id_role: updatedSiswa.id_role,
+				role: updatedSiswa.role,
 				nama: updatedSiswa.nama,
 				email: updatedSiswa.email,
 				telepon: updatedSiswa.telepon,
@@ -325,10 +363,6 @@ const UpdateSiswa = async (req, res) => {
 				gambar: updatedSiswa.gambar,
 				createdAt: updatedSiswa.createdAt,
 				updatedAt: updatedSiswa.updatedAt,
-				role: {
-					id: updatedSiswa.role.id,
-					role: updatedSiswa.role.role,
-				},
 				akun_siswa: {
 					id: updatedSiswa.akun_siswa.id,
 					nisn: updatedSiswa.akun_siswa.nisn,
@@ -376,7 +410,7 @@ const updateData = async (req, res) => {
 	try {
 		const { id } = req.params;
 		const {
-			id_role,
+			role,
 			id_siswa,
 			nama,
 			email,
@@ -403,11 +437,11 @@ const updateData = async (req, res) => {
 
 			// Hapus file gambar lama jika ada
 			if (existingAccount.gambar) {
-				const fs = require("fs");
-				const path = require("path");
 				const oldImagePath = path.join(
 					__dirname,
-					"../uploads",
+					"..",
+					"public",
+					"uploads",
 					existingAccount.gambar
 				);
 
@@ -417,24 +451,28 @@ const updateData = async (req, res) => {
 			}
 		}
 
-		const [updatedRowCount, updatedRows] = await Akun.update(
-			{
-				id_role,
-				id_siswa: id_siswa || 0,
-				nama,
-				email,
-				password,
-				tgl_lahir,
-				alamat,
-				status,
-				gambar,
-				telepon,
-			},
-			{
-				where: { id },
-				returning: true, // Untuk mendapatkan data yang sudah diupdate
-			}
-		);
+		// Persiapkan data untuk update
+		const updateData = {
+			role,
+			id_siswa: id_siswa || 0,
+			nama,
+			email,
+			tgl_lahir,
+			alamat,
+			status,
+			gambar,
+			telepon,
+		};
+
+		// Hash password jika ada password baru
+		if (password) {
+			updateData.password = await bcrypt.hash(password, 10);
+		}
+
+		const [updatedRowCount, updatedRows] = await Akun.update(updateData, {
+			where: { id },
+			returning: true, // Untuk mendapatkan data yang sudah diupdate
+		});
 
 		if (updatedRowCount === 0) {
 			return res.status(404).json({ message: "Data tidak ditemukan" });
@@ -448,6 +486,20 @@ const updateData = async (req, res) => {
 			data: updatedAccount,
 		});
 	} catch (error) {
+		// Hapus gambar baru yang sudah diupload jika terjadi error
+		if (req.file) {
+			const newImagePath = path.join(
+				__dirname,
+				"..",
+				"public",
+				"uploads",
+				req.file.filename
+			);
+			if (fs.existsSync(newImagePath)) {
+				fs.unlinkSync(newImagePath);
+			}
+		}
+
 		return res.status(500).json({ message: error.message });
 	}
 };
@@ -475,6 +527,7 @@ module.exports = {
 	getAllData,
 	getAllDataSiswa,
 	getDataById,
+	getDataByIdSiswa,
 	createData,
 	updateData,
 	UpdateSiswa,

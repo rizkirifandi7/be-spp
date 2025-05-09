@@ -1,58 +1,49 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-	class daftar_ppdb extends Model {
+	class ItemTagihan extends Model {
 		/**
 		 * Helper method for defining associations.
 		 * This method is not a part of Sequelize lifecycle.
 		 * The `models/index` file will call this method automatically.
 		 */
 		static associate(models) {
-			daftar_ppdb.belongsTo(models.ppdb_pembayaran, {
-				foreignKey: "id_ppdb",
-				as: "ppdb_pembayaran",
+			// define association here
+			ItemTagihan.belongsTo(models.Tagihan, {
+				foreignKey: "id_tagihan",
+				as: "tagihan",
+			});
+
+			ItemTagihan.belongsTo(models.Jenis_Pembayaran, {
+				foreignKey: "id_jenis_pembayaran",
+				as: "jenis_pembayaran",
 			});
 		}
 	}
-	daftar_ppdb.init(
+	ItemTagihan.init(
 		{
-			id_ppdb: {
+			id_tagihan: {
 				type: DataTypes.INTEGER,
 			},
-			id_unit: {
+			id_jenis_pembayaran: {
 				type: DataTypes.INTEGER,
 			},
-			no_daftar: {
+			deskripsi: {
+				type: DataTypes.TEXT,
+			},
+			jumlah: {
+				type: DataTypes.DECIMAL,
+			},
+			jatuh_tempo: {
+				type: DataTypes.DATE,
+			},
+			bulan: {
 				type: DataTypes.STRING,
 			},
-			nama: {
-				type: DataTypes.STRING,
-			},
-			email: {
+			tahun: {
 				type: DataTypes.STRING,
 			},
 			status: {
-				type: DataTypes.ENUM(
-					"registered",
-					"pending",
-					"rejected",
-					"accepted",
-					"verification"
-				),
-			},
-			alamat: {
-				type: DataTypes.TEXT,
-			},
-			telepon: {
-				type: DataTypes.STRING,
-			},
-			nik: {
-				type: DataTypes.STRING,
-			},
-			tgl_lahir: {
-				type: DataTypes.STRING,
-			},
-			status_pembayaran: {
 				type: DataTypes.ENUM("paid", "unpaid"),
 			},
 			midtrans_url: {
@@ -64,9 +55,9 @@ module.exports = (sequelize, DataTypes) => {
 		},
 		{
 			sequelize,
-			modelName: "daftar_ppdb",
+			modelName: "ItemTagihan",
 		}
 	);
-	return daftar_ppdb;
+	return ItemTagihan;
 };
 

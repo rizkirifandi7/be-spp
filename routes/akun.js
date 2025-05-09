@@ -9,7 +9,7 @@ const {
 	updateData,
 	UpdateSiswa,
 	deleteData,
-} = require("../controllers/akun.controller");
+} = require("../controllers/akun");
 
 const upload = require("../middlewares/multer");
 

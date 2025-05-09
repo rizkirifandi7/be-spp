@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/broadcast.controller");
+} = require("../controllers/kas");
 
 router.get("/", getAllData);
 router.get("/:id", getDataById);

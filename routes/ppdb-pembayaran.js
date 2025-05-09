@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/kelas.controller");
+} = require("../controllers/ppdb-pembayaran");
 
 router.get("/", getAllData);
 router.get("/:id", getDataById);

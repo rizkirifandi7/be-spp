@@ -4,7 +4,7 @@ const {
 	Login,
 	Register,
 	RegisterSiswa,
-} = require("../controllers/auth.controller");
+} = require("../controllers/auth");
 
 const upload = require("../middlewares/multer");
 

@@ -24,9 +24,6 @@ module.exports = {
       status: {
         type: Sequelize.ENUM('on', 'off')
       },
-      nama_kelas: {
-        type: Sequelize.STRING
-      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

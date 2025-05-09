@@ -2,50 +2,35 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
-		await queryInterface.createTable("daftar_ppdbs", {
+		await queryInterface.createTable("ItemTagihans", {
 			id: {
 				allowNull: false,
 				autoIncrement: true,
 				primaryKey: true,
 				type: Sequelize.INTEGER,
 			},
-			id_ppdb: {
+			id_tagihan: {
 				type: Sequelize.INTEGER,
 			},
-			id_unit: {
+			id_jenis_pembayaran: {
 				type: Sequelize.INTEGER,
 			},
-			no_daftar: {
+			deskripsi: {
+				type: Sequelize.TEXT,
+			},
+			jatuh_tempo: {
+				type: Sequelize.DATE,
+			},
+			jumlah: {
+				type: Sequelize.DECIMAL,
+			},
+			bulan: {
 				type: Sequelize.STRING,
 			},
-			nama: {
-				type: Sequelize.STRING,
-			},
-			email: {
+			tahun: {
 				type: Sequelize.STRING,
 			},
 			status: {
-				type: Sequelize.ENUM(
-					"registered",
-					"pending",
-					"rejected",
-					"accepted",
-					"verification"
-				),
-			},
-			alamat: {
-				type: Sequelize.TEXT,
-			},
-			telepon: {
-				type: Sequelize.STRING,
-			},
-			nik: {
-				type: Sequelize.STRING,
-			},
-			tgl_lahir: {
-				type: Sequelize.STRING,
-			},
-			status_pembayaran: {
 				type: Sequelize.ENUM("paid", "unpaid"),
 			},
 			midtrans_url: {
@@ -65,7 +50,7 @@ module.exports = {
 		});
 	},
 	async down(queryInterface, Sequelize) {
-		await queryInterface.dropTable("daftar_ppdbs");
+		await queryInterface.dropTable("ItemTagihans");
 	},
 };
 

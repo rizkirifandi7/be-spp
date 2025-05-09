@@ -1,31 +1,42 @@
 const router = require("express").Router();
 
-const sekolahRouter = require("./sekolah.routes");
-const unitRouter = require("./unit.routes");
-const bulanRouter = require("./bulan.routes");
-const kasRouter = require("./kas.routes");
-const kelasRouter = require("./kelas.routes");
-const jurusanRouter = require("./jurusan.routes");
-const broadcastRouter = require("./broadcast.routes");
-const jenisPembayaranRouter = require("./jenis-pembayaran.routes");
-const akunRouter = require("./akun.routes");
-const ppdbPembayaranRouter = require("./ppdb-pembayaran.routes");
-const daftarPPDBRouter = require("./daftar-ppdb.routes");
-const authRouter = require("./auth.routes");
-const aturPembayaranRouter = require("./atur-pembayaran.routes");
+const kasRouter = require("./kas");
+const akunRouter = require("./akun");
+const authRouter = require("./auth");
+const unitRouter = require("./unit");
+const bulanRouter = require("./bulan");
+const kelasRouter = require("./kelas");
+const jurusanRouter = require("./jurusan");
+const sekolahRouter = require("./sekolah");
+const broadcastRouter = require("./broadcast");
+const daftarPPDBRouter = require("./daftar-ppdb");
+const pembayaranRouter = require("./pembayaran");
+const ppdbPembayaranRouter = require("./ppdb-pembayaran");
+const jenisPembayaranRouter = require("./jenis-pembayaran");
+const tagihanRouter = require("./tagihan");
+const itemTagihanRouter = require("./item-tagihan");
 
-router.use("/sekolah", sekolahRouter);
+// auth
+router.use("/auth", authRouter);
+router.use("/akun", akunRouter);
+router.use("/daftar-ppdb", daftarPPDBRouter);
+
+// main data
+router.use("/kas", kasRouter);
 router.use("/unit", unitRouter);
 router.use("/bulan", bulanRouter);
-router.use("/kas", kasRouter);
 router.use("/kelas", kelasRouter);
+router.use("/sekolah", sekolahRouter);
 router.use("/jurusan", jurusanRouter);
+
+// broadcast
 router.use("/broadcast", broadcastRouter);
-router.use("/jenis-pembayaran", jenisPembayaranRouter);
-router.use("/akun", akunRouter);
+
+// pembayaran dan jenis pembayaran
+router.use("/pembayaran", pembayaranRouter);
 router.use("/ppdb-pembayaran", ppdbPembayaranRouter);
-router.use("/daftar-ppdb", daftarPPDBRouter);
-router.use("/auth", authRouter);
-router.use("/atur-pembayaran", aturPembayaranRouter);
+router.use("/jenis-pembayaran", jenisPembayaranRouter);
+router.use("/tagihan", tagihanRouter);
+router.use("/item-tagihan", itemTagihanRouter);
 
 module.exports = router;

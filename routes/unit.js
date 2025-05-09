@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/jurusan.controller");
+} = require("../controllers/unit");
 
 router.get("/", getAllData);
 router.get("/:id", getDataById);

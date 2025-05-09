@@ -2,36 +2,33 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
-		await queryInterface.createTable("Akuns", {
+		await queryInterface.createTable("Tagihans", {
 			id: {
 				allowNull: false,
 				autoIncrement: true,
 				primaryKey: true,
 				type: Sequelize.INTEGER,
 			},
-			id_sekolah: {
+			id_siswa: {
 				type: Sequelize.INTEGER,
 			},
-			nama: {
+			id_jenis_pembayaran: {
+				type: Sequelize.INTEGER,
+			},
+			deskripsi: {
+				type: Sequelize.TEXT,
+			},
+			nomor_tagihan: {
 				type: Sequelize.STRING,
 			},
-			email: {
-				type: Sequelize.STRING,
-			},
-			password: {
-				type: Sequelize.STRING,
-			},
-			telepon: {
-				type: Sequelize.STRING,
-			},
-			alamat: {
-				type: Sequelize.STRING,
+			total_jumlah: {
+				type: Sequelize.DECIMAL(12, 2),
 			},
 			status: {
-				type: Sequelize.ENUM("on", "off"),
+				type: Sequelize.ENUM("pending", "paid", "partial", "cancelled"),
 			},
-			role: {
-				type: Sequelize.ENUM("admin", "siswa", "guru"),
+			jumlah_bayar: {
+				type: Sequelize.DECIMAL(12, 2),
 			},
 			createdAt: {
 				allowNull: false,
@@ -44,7 +41,7 @@ module.exports = {
 		});
 	},
 	async down(queryInterface, Sequelize) {
-		await queryInterface.dropTable("Akuns");
+		await queryInterface.dropTable("Tagihans");
 	},
 };
 

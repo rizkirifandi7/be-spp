@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/ppdb-pembayaran.controller");
+} = require("../controllers/pembayaran");
 
 router.get("/", getAllData);
 router.get("/:id", getDataById);

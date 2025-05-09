@@ -6,7 +6,7 @@ const {
 	createData,
 	updateData,
 	deleteData,
-} = require("../controllers/sekolah.controller");
+} = require("../controllers/sekolah");
 
 const upload = require("../middlewares/multer");
 

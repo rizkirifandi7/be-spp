@@ -1,8 +1,16 @@
-const { Kas } = require("../models");
+const { Kas, Akun } = require("../models");
 
 const getAllData = async (req, res) => {
 	try {
-		const kas = await Kas.findAll();
+		const kas = await Kas.findAll({
+			include: [
+				{
+					model: Akun,
+					as: "akun",
+					attributes: ["id", "nama"],
+				},
+			],
+		});
 		return res.status(200).json({
 			message: "Data ditemukan",
 			data: kas,

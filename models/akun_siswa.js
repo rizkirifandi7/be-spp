@@ -31,32 +31,61 @@ module.exports = (sequelize, DataTypes) => {
 				foreignKey: "id_unit",
 				as: "unit",
 			});
-
-			// // Belongs to Pembayaran (assuming this exists)
-			// Akun_siswa.belongsTo(models.Pembayaran, {
-			// 	foreignKey: "id_pembayaran",
-			// 	as: "pembayaran",
-			// });
 		}
 	}
 	Akun_siswa.init(
 		{
-			id_akun: DataTypes.INTEGER,
-			id_pembayaran: DataTypes.INTEGER,
-			id_kelas: DataTypes.INTEGER,
-			id_jurusan: DataTypes.INTEGER,
-			id_unit: DataTypes.INTEGER,
-			nisn: DataTypes.STRING,
-			nik: DataTypes.STRING,
-			tempat_lahir: DataTypes.STRING,
-			umur: DataTypes.STRING,
-			jenis_kelamin: DataTypes.ENUM("Laki-Laki", "Perempuan"),
-			kebutuhan_khusus: DataTypes.ENUM("Ada", "Tidak Ada"),
-			disabilitas: DataTypes.ENUM("Ada", "Tidak Ada"),
-			no_kip: DataTypes.STRING,
-			nama_ayah: DataTypes.STRING,
-			nama_ibu: DataTypes.STRING,
-			nama_wali: DataTypes.STRING,
+			id_akun: {
+				type: DataTypes.INTEGER,
+			},
+			id_kelas: {
+				type: DataTypes.INTEGER,
+			},
+			id_jurusan: {
+				type: DataTypes.INTEGER,
+			},
+			id_unit: {
+				type: DataTypes.INTEGER,
+			},
+			nisn: {
+				type: DataTypes.STRING,
+			},
+			nik: {
+				type: DataTypes.STRING,
+			},
+			tempat_lahir: {
+				type: DataTypes.STRING,
+			},
+			tgl_lahir: {
+				type: DataTypes.DATE,
+			},
+			gambar: {
+				type: DataTypes.STRING,
+			},
+			umur: {
+				type: DataTypes.STRING,
+			},
+			jenis_kelamin: {
+				type: DataTypes.ENUM("Laki-Laki", "Perempuan"),
+			},
+			kebutuhan_khusus: {
+				type: DataTypes.ENUM("Ada", "Tidak Ada"),
+			},
+			disabilitas: {
+				type: DataTypes.ENUM("Ada", "Tidak Ada"),
+			},
+			no_kip: {
+				type: DataTypes.STRING,
+			},
+			nama_ayah: {
+				type: DataTypes.STRING,
+			},
+			nama_ibu: {
+				type: DataTypes.STRING,
+			},
+			nama_wali: {
+				type: DataTypes.STRING,
+			},
 		},
 		{
 			sequelize,

@@ -19,20 +19,49 @@ module.exports = (sequelize, DataTypes) => {
 				foreignKey: "id_sekolah",
 				as: "sekolah",
 			});
+
+			Akun.hasMany(models.Pembayaran, {
+				foreignKey: "id_siswa",
+				as: "pembayaran",
+			});
+
+			Akun.hasMany(models.Tagihan, {
+				foreignKey: "id_siswa",
+				as: "tagihan",
+			});
+
+			Akun.hasMany(models.Kas, {
+				foreignKey: "id_akun",
+				as: "kas",
+			});
 		}
 	}
 	Akun.init(
 		{
-			id_sekolah: DataTypes.INTEGER,
-			nama: DataTypes.STRING,
-			email: DataTypes.STRING,
-			password: DataTypes.STRING,
-			telepon: DataTypes.STRING,
-			tgl_lahir: DataTypes.DATE,
-			alamat: DataTypes.STRING,
-			status: DataTypes.ENUM("on", "off"),
-			gambar: DataTypes.STRING,
-			role: DataTypes.ENUM("admin", "siswa", "guru"),
+			id_sekolah: {
+				type: DataTypes.INTEGER,
+			},
+			nama: {
+				type: DataTypes.STRING,
+			},
+			email: {
+				type: DataTypes.STRING,
+			},
+			password: {
+				type: DataTypes.STRING,
+			},
+			telepon: {
+				type: DataTypes.STRING,
+			},
+			alamat: {
+				type: DataTypes.STRING,
+			},
+			status: {
+				type: DataTypes.ENUM("on", "off"),
+			},
+			role: {
+				type: DataTypes.ENUM("admin", "siswa", "guru"),
+			},
 		},
 		{
 			sequelize,

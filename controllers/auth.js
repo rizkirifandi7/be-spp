@@ -29,7 +29,7 @@ const Login = async (req, res) => {
 		}
 
 		const token = jwt.sign(
-			{ id: user.id, nama: user.nama, role: user.role },
+			{ id: user.id, nama: user.nama, email: user.email, role: user.role },
 			process.env.JWT_SECRET,
 			{
 				expiresIn: "6h",
@@ -52,16 +52,7 @@ const Login = async (req, res) => {
 
 const Register = async (req, res) => {
 	try {
-		const {
-			role,
-			nama,
-			email,
-			password,
-			tgl_lahir,
-			alamat,
-			status,
-			telepon,
-		} = req.body;
+		const { role, nama, email, password, alamat, status, telepon } = req.body;
 
 		const gambar = req.file ? req.file.filename : null;
 
@@ -70,7 +61,6 @@ const Register = async (req, res) => {
 			!nama ||
 			!email ||
 			!password ||
-			!tgl_lahir ||
 			!alamat ||
 			!status ||
 			!telepon
@@ -86,7 +76,6 @@ const Register = async (req, res) => {
 			nama,
 			email,
 			password: hashedPassword,
-			tgl_lahir,
 			alamat,
 			gambar,
 			status,
@@ -232,9 +221,7 @@ const RegisterSiswa = async (req, res) => {
 				nama,
 				email,
 				password: hashedPassword,
-				tgl_lahir: birthDate, // Ensure proper date format
 				alamat,
-				gambar,
 				status,
 				telepon,
 			},
@@ -244,7 +231,9 @@ const RegisterSiswa = async (req, res) => {
 		// Create student account with calculated age
 		const akun_siswa = await Akun_siswa.create(
 			{
+				gambar,
 				id_akun: akun.id,
+				tgl_lahir: birthDate, // Ensure proper date format
 				id_kelas,
 				id_jurusan,
 				id_unit,
@@ -259,7 +248,6 @@ const RegisterSiswa = async (req, res) => {
 				nama_ayah,
 				nama_ibu,
 				nama_wali,
-				id_pembayaran: null, // Set default or handle separately
 			},
 			{ transaction }
 		);

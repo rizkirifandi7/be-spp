@@ -9,9 +9,6 @@ module.exports = {
 				primaryKey: true,
 				type: Sequelize.INTEGER,
 			},
-			id_pembayaran: {
-				type: Sequelize.INTEGER,
-			},
 			id_akun: {
 				type: Sequelize.INTEGER,
 			},
@@ -31,6 +28,12 @@ module.exports = {
 				type: Sequelize.STRING,
 			},
 			tempat_lahir: {
+				type: Sequelize.STRING,
+			},
+			tgl_lahir: {
+				type: Sequelize.DATE,
+			},
+			gambar: {
 				type: Sequelize.STRING,
 			},
 			umur: {

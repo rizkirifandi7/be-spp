@@ -7,7 +7,7 @@ module.exports = {
 			"Units",
 			[
 				{
-					nama_unit: "MA",
+					nama_unit: "Madrasah Aliyah",
 					deskripsi: "Madrasah Aliyah",
 					createdAt: new Date(),
 					updatedAt: new Date(),

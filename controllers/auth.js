@@ -1,7 +1,9 @@
 const { Akun, Akun_siswa } = require("../models");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const cloudinary = require("../middlewares/cloudinary");
 const dotenv = require("dotenv");
+const fs = require("fs");
 dotenv.config();
 
 const { sequelize } = require("../models");
@@ -93,6 +95,7 @@ const Register = async (req, res) => {
 
 const RegisterSiswa = async (req, res) => {
 	const transaction = await sequelize.transaction();
+	let tempFilePath; // To store req.file.path for cleanup
 
 	try {
 		// Extract account data
@@ -120,7 +123,30 @@ const RegisterSiswa = async (req, res) => {
 			nama_wali,
 		} = req.body;
 
-		const gambar = req.file ? req.file.filename : null;
+		let gambarUrl = null; // Will store Cloudinary URL or null
+
+		if (req.file) {
+			tempFilePath = req.file.path; // Store path for potential cleanup
+			try {
+				const result = await cloudinary.uploader.upload(tempFilePath, {
+					folder: "akun_siswa_gambar", // You can customize the Cloudinary folder
+				});
+				gambarUrl = result.secure_url;
+				fs.unlinkSync(tempFilePath); // Delete the local file after successful upload
+				tempFilePath = null; // Mark as handled
+			} catch (uploadError) {
+				await transaction.rollback();
+				// Ensure local file is deleted if it still exists
+				if (tempFilePath && fs.existsSync(tempFilePath)) {
+					fs.unlinkSync(tempFilePath);
+				}
+				console.error("Cloudinary upload error:", uploadError);
+				return res.status(500).json({
+					message: "Gagal mengunggah gambar ke Cloudinary.",
+					error: uploadError.message,
+				});
+			}
+		}
 
 		// Remove umur from required fields since it will be calculated
 		const requiredFields = [
@@ -150,6 +176,10 @@ const RegisterSiswa = async (req, res) => {
 		const missingFields = requiredFields.filter((field) => !req.body[field]);
 		if (missingFields.length > 0) {
 			await transaction.rollback();
+			if (tempFilePath && fs.existsSync(tempFilePath)) {
+				// Cleanup if file was uploaded
+				fs.unlinkSync(tempFilePath);
+			}
 			return res.status(400).json({
 				message: "Semua field harus diisi",
 				missingFields,
@@ -160,6 +190,9 @@ const RegisterSiswa = async (req, res) => {
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
 			await transaction.rollback();
+			if (tempFilePath && fs.existsSync(tempFilePath)) {
+				fs.unlinkSync(tempFilePath);
+			}
 			return res.status(400).json({ message: "Format email tidak valid" });
 		}
 
@@ -171,6 +204,9 @@ const RegisterSiswa = async (req, res) => {
 
 		if (emailExists) {
 			await transaction.rollback();
+			if (tempFilePath && fs.existsSync(tempFilePath)) {
+				fs.unlinkSync(tempFilePath);
+			}
 			return res.status(400).json({ message: "Email sudah terdaftar" });
 		}
 
@@ -182,6 +218,9 @@ const RegisterSiswa = async (req, res) => {
 
 		if (nisnExists) {
 			await transaction.rollback();
+			if (tempFilePath && fs.existsSync(tempFilePath)) {
+				fs.unlinkSync(tempFilePath);
+			}
 			return res.status(400).json({ message: "NISN sudah terdaftar" });
 		}
 
@@ -192,8 +231,6 @@ const RegisterSiswa = async (req, res) => {
 		let yearDiff = today.getFullYear() - birthDate.getFullYear();
 		let monthDiff = today.getMonth() - birthDate.getMonth();
 
-		// Adjust year and month difference if current month is before birth month
-		// or if it's the same month but current day is before birth day
 		if (
 			monthDiff < 0 ||
 			(monthDiff === 0 && today.getDate() < birthDate.getDate())
@@ -202,12 +239,11 @@ const RegisterSiswa = async (req, res) => {
 			monthDiff += 12;
 		}
 
-		// Adjust month difference if needed
 		if (monthDiff < 0) {
+			// Should not happen if previous block is correct, but as a safeguard
 			monthDiff += 12;
 		}
 
-		// Format the age as "X tahun, Y bulan"
 		const umur = `${yearDiff} tahun, ${monthDiff} bulan`;
 
 		// Hash the password
@@ -228,19 +264,19 @@ const RegisterSiswa = async (req, res) => {
 			{ transaction }
 		);
 
-		// Create student account with calculated age
+		// Create student account with calculated age and Cloudinary image URL
 		const akun_siswa = await Akun_siswa.create(
 			{
-				gambar,
+				gambar: gambarUrl, // Use the Cloudinary URL here
 				id_akun: akun.id,
-				tgl_lahir: birthDate, // Ensure proper date format
+				tgl_lahir: birthDate,
 				id_kelas,
 				id_jurusan,
 				id_unit,
 				nisn,
 				nik,
 				tempat_lahir,
-				umur, // Use the calculated age
+				umur,
 				jenis_kelamin,
 				kebutuhan_khusus,
 				disabilitas,
@@ -266,6 +302,7 @@ const RegisterSiswa = async (req, res) => {
 					status: akun.status,
 				},
 				siswa: {
+					gambar: akun_siswa.gambar, // Include gambar URL in response
 					nisn: akun_siswa.nisn,
 					kelas: akun_siswa.id_kelas,
 					jurusan: akun_siswa.id_jurusan,
@@ -286,6 +323,11 @@ const RegisterSiswa = async (req, res) => {
 	} catch (error) {
 		// Rollback transaction on error
 		await transaction.rollback();
+
+		// Ensure local file is deleted if it exists and wasn't handled
+		if (tempFilePath && fs.existsSync(tempFilePath)) {
+			fs.unlinkSync(tempFilePath);
+		}
 
 		console.error("Error in RegisterSiswa:", error);
 

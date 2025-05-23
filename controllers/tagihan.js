@@ -66,6 +66,35 @@ const createTagihan = async (req, res) => {
 				const midtransOrderId = `ITEM-${newItem.id}-${Date.now()}`;
 				const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010";
 
+				// Calculate expiry duration based on item.jatuh_tempo
+				let expiryDurationDays = 3; // Default duration in days
+
+				if (item.jatuh_tempo) {
+					const jatuhTempoDate = new Date(item.jatuh_tempo);
+					// Set jatuhTempoDate to the end of the day (23:59:59.999)
+					// This ensures the payment link is valid for the entire due date.
+					jatuhTempoDate.setHours(23, 59, 59, 999);
+					const currentDate = new Date();
+
+					if (!isNaN(jatuhTempoDate.getTime())) {
+						// Check if jatuhTempoDate is a valid date
+						const timeDifference =
+							jatuhTempoDate.getTime() - currentDate.getTime();
+
+						if (timeDifference > 0) {
+							// Calculate duration in days, rounding up to the nearest whole day.
+							// Example: If 2.1 days remaining, it becomes 3 days for expiry.
+							expiryDurationDays = Math.ceil(
+								timeDifference / (1000 * 60 * 60 * 24)
+							);
+						} else {
+							// Jatuh tempo is in the past or exactly now.
+							// Set a minimum expiry of 1 day from the current time to allow payment.
+							expiryDurationDays = 1;
+						}
+					}
+				}
+
 				// Generate Midtrans URL
 				const parameter = {
 					transaction_details: {
@@ -75,7 +104,7 @@ const createTagihan = async (req, res) => {
 					customer_details: {
 						first_name: siswa.nama,
 						email: siswa.email,
-						phone: siswa.akun_siswa?.telepon || "08123456789", // Default number jika kosong
+						phone: siswa.telepon || "08123456789", // Default number jika kosong
 					},
 					item_details: [
 						{
@@ -87,7 +116,7 @@ const createTagihan = async (req, res) => {
 					],
 					expiry: {
 						unit: "day",
-						duration: 3,
+						duration: expiryDurationDays, // Gunakan durasi yang dihitung
 					},
 					callbacks: {
 						finish: `${appBaseUrl}/tagihan/konfirmasi/${newItem.id}`, // URL untuk konfirmasi pembayaran
@@ -150,10 +179,10 @@ const buatTagihanPerKelas = async (req, res) => {
 				{
 					model: Akun,
 					as: "akun",
-					attributes: ["id", "nama", "email"], // Tambahkan email
+					attributes: ["id", "nama", "email", "telepon"], // Tambahkan email dan telepon
 				},
 			],
-			attributes: ["id", "id_akun", "telepon"], // Tambahkan telepon dari Akun_siswa
+			attributes: ["id", "id_akun"],
 		});
 
 		if (!siswaKelas.length) {
@@ -164,6 +193,7 @@ const buatTagihanPerKelas = async (req, res) => {
 		}
 
 		const hasil = [];
+		const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010";
 
 		// Buat tagihan untuk setiap siswa
 		for (const siswa of siswaKelas) {
@@ -174,7 +204,7 @@ const buatTagihanPerKelas = async (req, res) => {
 				nomor_tagihan: generateTagihanNumber(),
 				id_jenis_pembayaran: items[0].id_jenis_pembayaran, // Asumsi semua item memiliki jenis pembayaran yang sama untuk tagihan utama
 				deskripsi: items[0].deskripsi, // Asumsi deskripsi utama diambil dari item pertama
-				jatuh_tempo,
+				jatuh_tempo, // Jatuh tempo global untuk tagihan utama
 				total_jumlah,
 				status: "pending",
 				jumlah_bayar: 0,
@@ -192,16 +222,42 @@ const buatTagihanPerKelas = async (req, res) => {
 					jatuh_tempo: item.jatuh_tempo || jatuh_tempo, // Gunakan jatuh_tempo item jika ada, jika tidak gunakan jatuh_tempo global
 				});
 
+				// Generate unique order_id untuk Midtrans
+				const midtransOrderId = `ITEM-${newItem.id}-${Date.now()}`;
+
+				// Calculate expiry duration based on newItem.jatuh_tempo
+				let expiryDurationDays = 3; // Default duration in days
+				const itemJatuhTempo = newItem.jatuh_tempo; // Menggunakan jatuh_tempo dari newItem yang sudah memperhitungkan fallback
+
+				if (itemJatuhTempo) {
+					const jatuhTempoDate = new Date(itemJatuhTempo);
+					jatuhTempoDate.setHours(23, 59, 59, 999);
+					const currentDate = new Date();
+
+					if (!isNaN(jatuhTempoDate.getTime())) {
+						const timeDifference =
+							jatuhTempoDate.getTime() - currentDate.getTime();
+
+						if (timeDifference > 0) {
+							expiryDurationDays = Math.ceil(
+								timeDifference / (1000 * 60 * 60 * 24)
+							);
+						} else {
+							expiryDurationDays = 1; // Jatuh tempo sudah lewat atau hari ini, beri minimal 1 hari
+						}
+					}
+				}
+
 				// Generate Midtrans URL
 				const parameter = {
 					transaction_details: {
-						order_id: `ITEM-${newItem.id}-${Date.now()}`,
+						order_id: midtransOrderId,
 						gross_amount: item.jumlah,
 					},
 					customer_details: {
 						first_name: siswa.akun.nama,
 						email: siswa.akun.email,
-						phone: siswa.telepon || "08123456789", // Default number jika kosong
+						phone: siswa.akun.telepon || "081234567890", // Default number jika kosong, ambil dari Akun
 					},
 					item_details: [
 						{
@@ -213,15 +269,21 @@ const buatTagihanPerKelas = async (req, res) => {
 					],
 					expiry: {
 						unit: "day",
-						duration: 3, // Link expired dalam 3 hari
+						duration: expiryDurationDays, // Gunakan durasi yang dihitung
+					},
+					callbacks: {
+						finish: `${appBaseUrl}/tagihan/konfirmasi/${newItem.id}`,
 					},
 				};
 
 				// Request ke Midtrans
 				const transaction = await snap.createTransaction(parameter);
 
-				// Update item dengan payment URL
-				await newItem.update({ midtrans_url: transaction.redirect_url });
+				// Update item dengan payment URL dan midtrans_order_id
+				await newItem.update({
+					midtrans_url: transaction.redirect_url,
+					midtrans_order_id: midtransOrderId,
+				});
 
 				return {
 					id: newItem.id,
@@ -230,7 +292,9 @@ const buatTagihanPerKelas = async (req, res) => {
 					bulan: newItem.bulan,
 					tahun: newItem.tahun,
 					status: newItem.status,
+					jatuh_tempo: newItem.jatuh_tempo,
 					midtrans_url: transaction.redirect_url,
+					midtrans_order_id: midtransOrderId,
 				};
 			});
 
@@ -401,6 +465,15 @@ const getAllTagihans = async (req, res) => {
 				{
 					model: Akun,
 					as: "siswa",
+					attributes: [
+						"id",
+						"nama",
+						"email",
+						"telepon",
+						"alamat",
+						"role",
+						"status",
+					],
 					include: [
 						{
 							model: Akun_siswa,
@@ -456,14 +529,50 @@ const getAllTagihans = async (req, res) => {
 	}
 };
 
-const getTagihanById = async (req, res) => {
+const getTagihanBySiswaId = async (req, res) => {
 	try {
-		const tagihan = await Tagihan.findByPk(req.params.id, {
+		const user = req.user;
+		const tagihans = await Tagihan.findAll({
+			where: { user: user.id },
 			include: [
 				{
 					model: Akun,
 					as: "siswa",
-					attributes: ["id", "nama", "email"],
+					attributes: [
+						"id",
+						"nama",
+						"email",
+						"telepon",
+						"alamat",
+						"role",
+						"status",
+					],
+					include: [
+						{
+							model: Akun_siswa,
+							as: "akun_siswa",
+							attributes: [
+								"id_kelas",
+								"id_jurusan",
+								"nisn",
+								"tgl_lahir",
+								"tempat_lahir",
+								"jenis_kelamin",
+							],
+							include: [
+								{
+									model: Kelas,
+									as: "kelas",
+									attributes: ["id", "nama_kelas"],
+								},
+								{
+									model: Jurusan,
+									as: "jurusan",
+									attributes: ["id", "nama_jurusan"],
+								},
+							],
+						},
+					],
 				},
 				{
 					model: ItemTagihan,
@@ -476,16 +585,98 @@ const getTagihanById = async (req, res) => {
 						},
 					],
 				},
+				{ model: Pembayaran, as: "pembayaran" },
 				{
-					model: Pembayaran,
-					as: "pembayaran",
-					attributes: [
-						"id",
-						"jumlah",
-						"metode_pembayaran",
-						"catatan",
-						"createdAt",
+					model: Jenis_Pembayaran,
+					as: "jenis_pembayaran",
+				},
+			],
+			order: [["createdAt", "DESC"]], // Optional: to sort by creation date
+		});
+
+		if (!tagihans || tagihans.length === 0) {
+			return res.status(404).json({
+				success: false,
+				error: "Tidak ada tagihan ditemukan untuk siswa ini",
+			});
+		}
+
+		// Optionally, calculate total_dibayar and sisa_tagihan for each tagihan
+		const tagihansWithDetails = await Promise.all(
+			tagihans.map(async (tagihan) => {
+				const total_dibayar = await Pembayaran.sum("jumlah", {
+					where: { id_invoice: tagihan.id, sudah_verifikasi: true }, // Consider only verified payments
+				});
+				return {
+					...tagihan.toJSON(),
+					total_dibayar: total_dibayar || 0,
+					sisa_tagihan: tagihan.total_jumlah - (total_dibayar || 0),
+				};
+			})
+		);
+
+		res.json({
+			success: true,
+			data: tagihansWithDetails,
+		});
+	} catch (error) {
+		console.error("Error in getTagihanBySiswaId:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
+};
+
+const getTagihanById = async (req, res) => {
+	try {
+		const tagihan = await Tagihan.findByPk(req.params.id, {
+			include: [
+				{
+					model: Akun,
+					as: "siswa",
+					include: [
+						{
+							model: Akun_siswa,
+							as: "akun_siswa",
+							attributes: [
+								"id_kelas",
+								"id_jurusan",
+								"nisn",
+								"tgl_lahir",
+								"tempat_lahir",
+								"jenis_kelamin",
+							],
+							include: [
+								{
+									model: Kelas,
+									as: "kelas",
+									attributes: ["id", "nama_kelas"],
+								},
+								{
+									model: Jurusan,
+									as: "jurusan",
+									attributes: ["id", "nama_jurusan"],
+								},
+							],
+						},
 					],
+				},
+				{
+					model: ItemTagihan,
+					as: "item_tagihan",
+					include: [
+						{
+							model: Jenis_Pembayaran,
+							as: "jenis_pembayaran",
+							attributes: ["id", "nama"],
+						},
+					],
+				},
+				{ model: Pembayaran, as: "pembayaran" },
+				{
+					model: Jenis_Pembayaran,
+					as: "jenis_pembayaran",
 				},
 			],
 		});
@@ -790,13 +981,144 @@ Tim Keuangan Sekolah
 	}
 };
 
+const renewMidtransPaymentLink = async (req, res) => {
+	try {
+		const { id: itemTagihanId } = req.params;
+
+		const itemTagihan = await ItemTagihan.findByPk(itemTagihanId, {
+			include: [
+				{
+					model: Tagihan,
+					as: "tagihan", // Pastikan alias ini sesuai dengan definisi model Anda
+					include: [
+						{
+							model: Akun,
+							as: "siswa", // Pastikan alias ini sesuai dengan definisi model Anda
+						},
+					],
+				},
+			],
+		});
+
+		if (!itemTagihan) {
+			return res
+				.status(404)
+				.json({ success: false, error: "Item tagihan tidak ditemukan." });
+		}
+
+		if (itemTagihan.status === "paid") {
+			return res
+				.status(400)
+				.json({ success: false, error: "Item tagihan ini sudah dibayar." });
+		}
+
+		const siswa = itemTagihan.tagihan.siswa;
+		if (!siswa) {
+			return res.status(404).json({
+				success: false,
+				error: "Data siswa tidak ditemukan untuk tagihan ini.",
+			});
+		}
+
+		// Generate unique order_id baru untuk Midtrans
+		const midtransOrderId = `ITEM-${itemTagihan.id}-RENEW-${Date.now()}`;
+		const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010";
+
+		// Hitung ulang durasi kedaluwarsa berdasarkan itemTagihan.jatuh_tempo
+		let expiryDurationDays = 3; // Durasi default
+		const itemJatuhTempo = itemTagihan.jatuh_tempo;
+
+		if (itemJatuhTempo) {
+			const jatuhTempoDate = new Date(itemJatuhTempo);
+			jatuhTempoDate.setHours(23, 59, 59, 999); // Set ke akhir hari jatuh tempo
+			const currentDate = new Date();
+
+			if (!isNaN(jatuhTempoDate.getTime())) {
+				const timeDifference = jatuhTempoDate.getTime() - currentDate.getTime();
+				if (timeDifference > 0) {
+					expiryDurationDays = Math.ceil(
+						timeDifference / (1000 * 60 * 60 * 24)
+					);
+				} else {
+					// Jika jatuh tempo sudah lewat atau hari ini, beri minimal 1 hari dari sekarang
+					// Atau sesuaikan dengan kebijakan Anda, misalnya tidak bisa diperbarui jika sudah lewat jauh.
+					expiryDurationDays = 1;
+				}
+			}
+		}
+		// Pastikan expiryDurationDays tidak negatif atau nol jika jatuh tempo sudah sangat lewat.
+		if (expiryDurationDays <= 0) {
+			expiryDurationDays = 1; // Minimal 1 hari kedaluwarsa
+		}
+
+		// Parameter untuk Midtrans
+		const parameter = {
+			transaction_details: {
+				order_id: midtransOrderId,
+				gross_amount: itemTagihan.jumlah,
+			},
+			customer_details: {
+				first_name: siswa.nama,
+				email: siswa.email,
+				phone: siswa.telepon || "08123456789", // Nomor default jika kosong
+			},
+			item_details: [
+				{
+					id: itemTagihan.id.toString(), // Pastikan ID adalah string
+					price: itemTagihan.jumlah,
+					quantity: 1,
+					name: itemTagihan.deskripsi,
+				},
+			],
+			expiry: {
+				unit: "day",
+				duration: expiryDurationDays,
+			},
+			callbacks: {
+				finish: `${appBaseUrl}/tagihan/konfirmasi/${itemTagihan.id}`, // URL konfirmasi pembayaran
+			},
+		};
+
+		// Buat transaksi baru ke Midtrans
+		const transaction = await snap.createTransaction(parameter);
+
+		// Update itemTagihan dengan URL dan order_id Midtrans yang baru
+		await itemTagihan.update({
+			midtrans_url: transaction.redirect_url,
+			midtrans_order_id: midtransOrderId,
+		});
+
+		res.status(200).json({
+			success: true,
+			message: "Link pembayaran berhasil diperbarui.",
+			data: {
+				id: itemTagihan.id,
+				midtrans_url: transaction.redirect_url,
+				midtrans_order_id: midtransOrderId,
+			},
+		});
+	} catch (error) {
+		console.error("Error renewing Midtrans payment link:", error);
+		// Kirim response error yang lebih detail jika dalam mode development
+		const errorMessage =
+			process.env.NODE_ENV === "development"
+				? error.stack
+				: "Gagal memperbarui link pembayaran.";
+		res
+			.status(500)
+			.json({ success: false, error: error.message, details: errorMessage });
+	}
+};
+
 module.exports = {
 	createTagihan,
 	payTagihan,
 	getAllTagihans,
+	getTagihanBySiswaId,
 	getTagihanById,
 	updateTagihan,
 	deleteTagihan,
 	buatTagihanPerKelas,
 	handleMidtransKonfirmasi,
+	renewMidtransPaymentLink,
 };

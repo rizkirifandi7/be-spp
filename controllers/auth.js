@@ -167,10 +167,8 @@ const RegisterSiswa = async (req, res) => {
 			"jenis_kelamin",
 			"kebutuhan_khusus",
 			"disabilitas",
-			"no_kip",
 			"nama_ayah",
 			"nama_ibu",
-			"nama_wali",
 		];
 
 		const missingFields = requiredFields.filter((field) => !req.body[field]);
@@ -280,7 +278,7 @@ const RegisterSiswa = async (req, res) => {
 				jenis_kelamin,
 				kebutuhan_khusus,
 				disabilitas,
-				no_kip,
+				no_kip: no_kip || "-", // Allow no_kip to be optional
 				nama_ayah,
 				nama_ibu,
 				nama_wali,

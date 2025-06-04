@@ -7,6 +7,7 @@ const {
 	deleteData,
 	createSnap,
 	updatePaymentStatus,
+	updateMidtransLink,
 } = require("../controllers/daftar-ppdb");
 
 router.get("/", getAllData);
@@ -16,5 +17,6 @@ router.put("/:id", updateData);
 router.delete("/:id", deleteData);
 router.post("/snap/:id", createSnap);
 router.get("/status-pembayaran/:id", updatePaymentStatus);
+router.put("/midtrans-link/:id", updateMidtransLink);
 
 module.exports = router;

@@ -104,7 +104,7 @@ const createTagihan = async (req, res) => {
 					customer_details: {
 						first_name: siswa.nama,
 						email: siswa.email,
-						phone: siswa.telepon || "08123456789", // Default number jika kosong
+						phone: siswa.telepon, // Default number jika kosong
 					},
 					item_details: [
 						{
@@ -257,7 +257,7 @@ const buatTagihanPerKelas = async (req, res) => {
 					customer_details: {
 						first_name: siswa.akun.nama,
 						email: siswa.akun.email,
-						phone: siswa.akun.telepon || "081234567890", // Default number jika kosong, ambil dari Akun
+						phone: siswa.akun.telepon, // Default number jika kosong, ambil dari Akun
 					},
 					item_details: [
 						{
@@ -912,7 +912,7 @@ Tim Keuangan Sekolah
 							: teleponSiswa;
 
 						const fonnteApiKey =
-							process.env.FONNTE_API_KEY || "QqrpmALC8wz9WvyeqtBF";
+							process.env.FONNTE_API_KEY;
 
 						const formData = new FormData();
 						formData.append("target", targetTelepon);

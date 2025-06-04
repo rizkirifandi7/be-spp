@@ -128,7 +128,7 @@ const getDataById = async (req, res) => {
 const createData = async (req, res) => {
 	try {
 		const {
-			id_ppdb, // Assumed to be the ID of the ppdb_pembayaran record
+			id_ppdb,
 			nama,
 			email,
 			status,
@@ -139,7 +139,6 @@ const createData = async (req, res) => {
 			no_daftar,
 		} = req.body;
 
-		// Validasi field wajib
 		if (
 			!id_ppdb ||
 			!nama ||
@@ -150,20 +149,17 @@ const createData = async (req, res) => {
 			!alamat ||
 			!nik
 		) {
-			return res
-				.status(400)
-				.json({
-					message:
-						"Semua field wajib harus diisi, termasuk id_ppdb untuk detail pembayaran.",
-				});
+			return res.status(400).json({
+				message:
+					"Semua field wajib harus diisi, termasuk id_ppdb untuk detail pembayaran.",
+			});
 		}
 
-		// 1. Fetch ppdb_pembayaran details to get gross_amount
 		const pembayaranInfo = await ppdb_pembayaran.findOne({
-			where: { id: id_ppdb }, // Assuming id_ppdb from req.body is the PK of ppdb_pembayaran
+			where: { id: id_ppdb },
 			include: {
 				model: Unit,
-				as: "unit", // Ensure 'as' matches your model association
+				as: "unit",
 				attributes: ["nama_unit"],
 			},
 		});
@@ -172,23 +168,18 @@ const createData = async (req, res) => {
 			!pembayaranInfo ||
 			typeof pembayaranInfo.jumlah_pembayaran === "undefined"
 		) {
-			return res
-				.status(404)
-				.json({
-					message:
-						"Detail pembayaran tidak ditemukan atau jumlah pembayaran tidak valid untuk id_ppdb yang diberikan.",
-				});
+			return res.status(404).json({
+				message:
+					"Detail pembayaran tidak ditemukan atau jumlah pembayaran tidak valid untuk id_ppdb yang diberikan.",
+			});
 		}
 		const grossAmount = pembayaranInfo.jumlah_pembayaran;
-
-		// 2. Generate random no_daftar jika tidak disediakan
 		const generatedNoDaftar = no_daftar || generateRandomNoDaftar();
 
-		// 3. Create the initial daftar_ppdb record
 		let newDaftarPpdb;
 		try {
 			newDaftarPpdb = await daftar_ppdb.create({
-				id_ppdb, // This is the foreign key to ppdb_pembayaran
+				id_ppdb,
 				no_daftar: generatedNoDaftar,
 				nama,
 				email,
@@ -198,52 +189,40 @@ const createData = async (req, res) => {
 				alamat,
 				nik,
 				status_pembayaran: "unpaid",
-				midtrans_url: null, // Placeholder
-				midtrans_order_id: null, // Placeholder
+				midtrans_url: null,
+				midtrans_order_id: null,
 			});
 		} catch (dbError) {
 			console.error("Error creating daftar_ppdb entry:", dbError);
-			return res
-				.status(500)
-				.json({
-					message: "Gagal menyimpan data pendaftaran.",
-					error: dbError.message,
-				});
+			return res.status(500).json({
+				message: "Gagal menyimpan data pendaftaran.",
+				error: dbError.message,
+			});
 		}
 
-		if (!newDaftarPpdb || !newDaftarPpdb.id) {
-			return res
-				.status(500)
-				.json({
-					message: "Gagal membuat entri pendaftaran atau mendapatkan ID.",
-				});
-		}
-
-		// 4. Prepare Midtrans transaction parameters
 		const midtransOrderId = `PPDB-${generatedNoDaftar}-${Date.now()}`;
-		const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010"; // Configure your app's base URL
+		const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010";
 
 		const parameter = {
 			transaction_details: {
 				order_id: midtransOrderId,
-				gross_amount: parseFloat(grossAmount), // Ensure gross_amount is a number
+				gross_amount: parseFloat(grossAmount),
 			},
 			credit_card: {
 				secure: true,
 			},
 			customer_details: {
 				first_name: nama,
-				last_name: nama, // Or handle separately if last name is distinct
+				last_name: nama,
 				email: email,
 				phone: telepon,
 			},
 			callbacks: {
 				finish: `${appBaseUrl}/daftar-ppdb/status-pembayaran/${newDaftarPpdb.id}`,
 			},
-			// Optional: Add item details for better display on Midtrans page
 			item_details: [
 				{
-					id: `REG-${newDaftarPpdb.id}`, // Unique ID for the item
+					id: `REG-${newDaftarPpdb.id}`,
 					price: parseFloat(grossAmount),
 					quantity: 1,
 					name: `Biaya Pendaftaran PPDB ${
@@ -253,59 +232,80 @@ const createData = async (req, res) => {
 			],
 		};
 
-		// 5. Create Midtrans transaction
 		let transaction;
 		try {
 			transaction = await snap.createTransaction(parameter);
 		} catch (midtransError) {
 			console.error("Error creating Midtrans transaction:", midtransError);
-			// Consider if you need to clean up the newDaftarPpdb record here
-			// await daftar_ppdb.destroy({ where: { id: newDaftarPpdb.id }});
-			return res
-				.status(500)
-				.json({
-					error: "Failed to create Midtrans transaction",
-					details: midtransError.message,
-				});
+			return res.status(500).json({
+				error: "Failed to create Midtrans transaction",
+				details: midtransError.message,
+			});
 		}
 
-		if (!transaction || !transaction.redirect_url) {
-			console.error(
-				"Midtrans transaction object or redirect_url missing",
-				transaction
-			);
-			return res
-				.status(500)
-				.json({ error: "Gagal mendapatkan URL redirect dari Midtrans." });
-		}
-
-		// 6. Update the daftar_ppdb record with Midtrans details
 		await newDaftarPpdb.update({
 			midtrans_url: transaction.redirect_url,
 			midtrans_order_id: midtransOrderId,
 		});
 
-		// 7. Return response
-		// Fetch the updated record to include all fields, including associations if needed for response
 		const finalData = await daftar_ppdb.findOne({
 			where: { id: newDaftarPpdb.id },
-			// include: [{ model: ppdb_pembayaran, as: 'ppdb_pembayaran' }] // Optional: include related data if needed in response
 		});
+
+		try {
+			const fonnteResponse = await fetch("https://api.fonnte.com/send", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `${process.env.FONNTE_API_KEY}`, // API key Fonnte dari .env
+				},
+				body: JSON.stringify({
+					target: telepon, // Nomor telepon penerima
+					message: `
+Assalamu’alaikum Warahmatullahi Wabarakatuh
+
+Yth. Bapak/Ibu Orang Tua/Wali dari Ananda *${nama}*
+
+Alhamdulillah, pendaftaran PPDB telah berhasil kami terima dengan rincian sebagai berikut:
+🧾 Nomor Pendaftaran: *${generatedNoDaftar}*
+💰 Jumlah Pembayaran: *Rp ${grossAmount.toLocaleString("id-ID")}*
+📅 Tanggal Pendaftaran: *${new Date().toLocaleDateString("id-ID")}*
+
+Silakan selesaikan pembayaran melalui tautan berikut:
+🔗 *${transaction.redirect_url}*
+
+Terima kasih atas kepercayaan Bapak/Ibu kepada sekolah kami. Semoga Allah SWT senantiasa memberikan kemudahan dan keberkahan.
+
+Hormat kami,
+Tim PPDB Sekolah
+      `.trim(),
+				}),
+			});
+
+			if (!fonnteResponse.ok) {
+				throw new Error(`Fonnte API error: ${fonnteResponse.statusText}`);
+			}
+
+			const fonnteData = await fonnteResponse.json();
+			console.log("Pesan berhasil dikirim:", fonnteData);
+		} catch (fonnteError) {
+			console.error(
+				"Gagal mengirim pesan melalui Fonnte:",
+				fonnteError.message
+			);
+		}
 
 		return res.status(201).json({
 			message: "Data berhasil ditambahkan dan transaksi Midtrans dibuat.",
-			data: finalData, // Send the fully updated record
+			data: finalData,
 		});
 	} catch (error) {
 		console.error("Error in createData:", error);
-		// Ensure a generic error message for unexpected errors
 		if (!res.headersSent) {
-			return res
-				.status(500)
-				.json({
-					message: "Terjadi kesalahan pada server.",
-					error: error.message,
-				});
+			return res.status(500).json({
+				message: "Terjadi kesalahan pada server.",
+				error: error.message,
+			});
 		}
 	}
 };
@@ -373,6 +373,102 @@ const deleteData = async (req, res) => {
 	}
 };
 
+const updateMidtransLink = async (req, res) => {
+	try {
+		const { id } = req.params; // ID dari data daftar_ppdb
+
+		// Cari data berdasarkan ID
+		const daftar = await daftar_ppdb.findOne({
+			where: { id },
+			include: {
+				model: ppdb_pembayaran,
+				as: "ppdb_pembayaran",
+				attributes: ["jumlah_pembayaran"],
+				include: {
+					model: Unit,
+					as: "unit",
+					attributes: ["nama_unit"],
+				},
+			},
+		});
+
+		if (!daftar) {
+			return res.status(404).json({
+				message: "Data tidak ditemukan.",
+			});
+		}
+
+		// Ambil informasi pembayaran
+		const grossAmount = daftar.ppdb_pembayaran.jumlah_pembayaran;
+		const midtransOrderId = `PPDB-${daftar.no_daftar}-${Date.now()}`;
+		const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:8010";
+
+		// Parameter untuk Midtrans
+		const parameter = {
+			transaction_details: {
+				order_id: midtransOrderId,
+				gross_amount: parseFloat(grossAmount),
+			},
+			credit_card: {
+				secure: true,
+			},
+			customer_details: {
+				first_name: daftar.nama,
+				last_name: daftar.nama,
+				email: daftar.email,
+				phone: daftar.telepon,
+			},
+			callbacks: {
+				finish: `${appBaseUrl}/daftar-ppdb/status-pembayaran/${daftar.id}`,
+			},
+			item_details: [
+				{
+					id: `REG-${daftar.id}`,
+					price: parseFloat(grossAmount),
+					quantity: 1,
+					name: `Biaya Pendaftaran PPDB ${
+						daftar.ppdb_pembayaran.unit
+							? daftar.ppdb_pembayaran.unit.nama_unit
+							: ""
+					}`.trim(),
+				},
+			],
+		};
+
+		// Generate ulang transaksi Midtrans
+		let transaction;
+		try {
+			transaction = await snap.createTransaction(parameter);
+		} catch (midtransError) {
+			console.error("Error creating Midtrans transaction:", midtransError);
+			return res.status(500).json({
+				error: "Failed to create Midtrans transaction",
+				details: midtransError.message,
+			});
+		}
+
+		// Perbarui link Midtrans di database
+		await daftar.update({
+			midtrans_url: transaction.redirect_url,
+			midtrans_order_id: midtransOrderId,
+		});
+
+		return res.status(200).json({
+			message: "Link Midtrans berhasil diperbarui.",
+			data: {
+				id: daftar.id,
+				midtrans_url: transaction.redirect_url,
+			},
+		});
+	} catch (error) {
+		console.error("Error updating Midtrans link:", error);
+		return res.status(500).json({
+			message: "Terjadi kesalahan pada server.",
+			error: error.message,
+		});
+	}
+};
+
 module.exports = {
 	getAllData,
 	getDataById,
@@ -381,4 +477,5 @@ module.exports = {
 	deleteData,
 	createSnap,
 	updatePaymentStatus,
+	updateMidtransLink,
 };
